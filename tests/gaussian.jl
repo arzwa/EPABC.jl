@@ -11,7 +11,7 @@ end
 Base.rand(m::MvnModel) = rand(MvNormal(m.μ, m.Σ))
 
 # simulate data from a MvNormal
-n = 200
+n = 100
 true_μ = randn(3)
 true_Σ = diagm(ones(3))
 model  = MvnModel(true_μ, true_Σ)
@@ -23,22 +23,25 @@ data   = [rand(model) for i=1:n]
 # parameters are the means.
 μ = zeros(3) 
 Σ = diagm(ones(3))
-M = 20000
-ϵ = 1.5
-alg = GaussianEPABC(data, model, l2norm, μ, Σ, ϵ, M)
+M = 30000
+ϵ = 1.8
+accept(ϵ) = (x, y)->l2norm(x, y) ≤ ϵ
+alg = GaussianEPABC(data, model, accept(ϵ), μ, Σ, M)
 
 # do three passes
-res = ep_pass!(alg)
-res = [res ; ep_pass!(alg)]
-res = [res ; ep_pass!(alg)]
+trace = ep_pass!(alg)
+trace = [trace ; ep_pass!(alg)]
+trace = [trace ; ep_pass!(alg)]
+
+# mean and covariance of approximation
+m = trace[end][1]  
+S = trace[end][2]
 
 # some plots
 using Plots, StatsPlots
 default(grid=false, legend=false, guidefont=9)
-p1 = plot(hcat(first.(res)...)')
+p1 = plot(hcat(first.(trace)...)')
 hline!(true_μ, color=:black, ls=:dot, xlabel="iteration")
-m = res[end][1]  
-S = res[end][2]
 p2 = plot(xlabel="mean")
 for i=1:3
     plot!(Normal(m[i], sqrt(S[i,i])), fill=true, fillalpha=0.1)
